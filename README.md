@@ -1,3 +1,6 @@
+COMPOSE_DOCKER_CLI_BUILD=1 
+DOCKER_BUILDKIT=1
+
 # aws-terraform-cicd-java-springboot..
 Terraform: AWS CICD with CodePipeline, CodeBuild, ECS and a Springboot App.
 
