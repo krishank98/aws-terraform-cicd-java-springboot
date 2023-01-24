@@ -1,6 +1,0 @@
-com/ruanbekker/cargarage/controller/IndexController.class
-com/ruanbekker/cargarage/model/Car.class
-com/ruanbekker/cargarage/controller/CarController.class
-com/ruanbekker/cargarage/repository/CarRepository.class
-com/ruanbekker/cargarage/CarGarageApplication.class
-com/ruanbekker/cargarage/exception/ResourceNotFoundException.class
