@@ -1,4 +1,4 @@
-apiVersion: app/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rabbitmq-deployment
@@ -15,3 +15,10 @@ spec:
       containers:
         - name:  rabbitmq
           image: rabbitmq:3-management
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
