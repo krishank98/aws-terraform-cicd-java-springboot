@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todoendpoint-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todoendpoint
+  template:
+    metadata:
+      labels:
+        app: todoendpoint
+    spec:
+      containers:
+        - name: todoendpoint
+          image: todoendpoint
+          env:
+          - name: todoui
+            value: http://todoui:5000
+          - name: todoui_map
+            value: /
+          #- name: todoapi
+          #  value: http://todoapi:5000/api/todoitems
+          #- name: todoapi_map
+          #  value: /api/todoitems
+          #- name: boardapi
+          #  value: http://boardapi:3000/api/boarditems
+          #- name: boardapi_map
+          #  value: /api/boarditems
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todoendpoint
+spec:
+  type: NodePort
+  ports:
+    - name: todoendpoint
+      port: 80
+      targetPort: 80
+      nodePort: 31000
+      protocol: TCP
+  selector:
+    app: todoendpoint

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config
+  template:
+    metadata:
+      labels:
+        app: config
+    spec:
+      containers:
+        - name:  config
+          image: sqshq/piggymetrics-config
+          env:
+            - name: CONFIG_SERVICE_PASSWORD
+              value: $CONFIG_SERVICE_PASSWORD
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
