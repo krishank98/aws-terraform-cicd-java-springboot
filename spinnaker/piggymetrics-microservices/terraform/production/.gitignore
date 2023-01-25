@@ -8,7 +8,7 @@ eks-state
 
 # .tfvars files
 *.tfvars
-
+*.lock.hcl
 config-map-aws-auth.yaml
 
 # node modules
