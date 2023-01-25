@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statistics-mongodb-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statistics-mongodb
+  template:
+    metadata:
+      labels:
+        app: statistics-mongodb
+    spec:
+      containers:
+        - name:  statistics-mongodb
+          image: sqshq/piggymetrics-mongodb
+          env:
+            - name: MONGODB_PASSWORD
+              value: $MONGODB_PASSWORD
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
