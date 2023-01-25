@@ -5,6 +5,7 @@ metadata:
 spec:
   selector:
     app: registry
+  type: ClusterIP
   ports:
   - port: 8751
     targetPort: 8751

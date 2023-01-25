@@ -5,6 +5,7 @@ metadata:
 spec:
   selector:
     app: rabbitmq
+  type: ClusterIP
   ports:
   - port: 15672
     targetPort: 15672

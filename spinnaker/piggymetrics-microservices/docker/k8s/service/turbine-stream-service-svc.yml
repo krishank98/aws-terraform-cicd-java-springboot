@@ -5,6 +5,7 @@ metadata:
 spec:
   selector:
     app: turbine-stream-service
+  type: ClusterIP
   ports:
   - port: 8989
     targetPort: 8989
