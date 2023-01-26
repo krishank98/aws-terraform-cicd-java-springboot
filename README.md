@@ -1,447 +1,254 @@
-export COMPOSE_DOCKER_CLI_BUILD=1 
-export DOCKER_BUILDKIT=1
+[![Build Status](https://travis-ci.org/sqshq/PiggyMetrics.svg?branch=master)](https://travis-ci.org/sqshq/PiggyMetrics)
+[![codecov.io](https://codecov.io/github/sqshq/PiggyMetrics/coverage.svg?branch=master)](https://codecov.io/github/sqshq/PiggyMetrics?branch=master)
+[![GitHub license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/sqshq/PiggyMetrics/blob/master/LICENCE)
+[![Join the chat at https://gitter.im/sqshq/PiggyMetrics](https://badges.gitter.im/sqshq/PiggyMetrics.svg)](https://gitter.im/sqshq/PiggyMetrics?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-# aws-terraform-cicd-java-springboot....
-Terraform: AWS CICD with CodePipeline, CodeBuild, ECS and a Springboot App.
+# Piggy Metrics
 
-The [all-in-one](https://github.com/ruanbekker/aws-terraform-cicd-java-springboot/tree/all-in-one) branch has the application code, application infrastructure and pipeline infrastructure in one repository.
+Piggy Metrics is a simple financial advisor app built to demonstrate the [Microservice Architecture Pattern](http://martinfowler.com/microservices/) using Spring Boot, Spring Cloud and Docker. The project is intended as a tutorial, but you are welcome to fork it and turn it into something else!.
 
-## Description
+<br>
 
-This is a demo on how to use Terraform to deploy your AWS Infrastructure for your Java Springboot application to run as a container on ECS.
+![](https://cloud.githubusercontent.com/assets/6069066/13864234/442d6faa-ecb9-11e5-9929-34a9539acde0.png)
+![Piggy Metrics](https://cloud.githubusercontent.com/assets/6069066/13830155/572e7552-ebe4-11e5-918f-637a49dff9a2.gif)
 
-You will be able to boot your application locally using docker-compose as well as building the following infrastructure on AWS for this application:
+## Functional services
 
-- ALB, Target Groups, 80 and 443 Target Group Listeners, with Listener Configurations
-- ACM Certificates, ACM Certificate Validation and Route53 Configuration
-- CI/CD Pipeline with CodePipeline, CodeBuild and Deployment to ECS with EC2 as target
-- Github Webhook (Pipeline will trigger on the main branch but configurable in `variables.tf`)
-- ECR Repository
-- ECS Container Instance with Userdata
-- ECS Cluster, ECS Service and ECS Task Definition with variables
-- S3 Buckets for CodePipeline and CodeBuild Cache
-- RDS MySQL Instance
-- SSM Parameters for RDS Password, Hostname etc, which we will place into the Task Definition as well
-- IAM Roles, Policies and Security Groups
+Piggy Metrics is decomposed into three core microservices. All of them are independently deployable applications organized around certain business domains.
 
-When I tested, terraform took `4m 24s` to deploy the infrastructure and when I made a commit to the `main` branch the pipeline took about 5 minutes to deploy.
+<img width="880" alt="Functional services" src="https://cloud.githubusercontent.com/assets/6069066/13900465/730f2922-ee20-11e5-8df0-e7b51c668847.png">
 
-## Deploy Local
+#### Account service
+Contains general input logic and validation: incomes/expenses items, savings and account settings.
 
-Boot our application with docker-compose:
+Method	| Path	| Description	| User authenticated	| Available from UI
+------------- | ------------------------- | ------------- |:-------------:|:----------------:|
+GET	| /accounts/{account}	| Get specified account data	|  | 	
+GET	| /accounts/current	| Get current account data	| × | ×
+GET	| /accounts/demo	| Get demo account data (pre-filled incomes/expenses items, etc)	|   | 	×
+PUT	| /accounts/current	| Save current account data	| × | ×
+POST	| /accounts/	| Register new account	|   | ×
 
+
+#### Statistics service
+Performs calculations on major statistics parameters and captures time series for each account. Datapoint contains values normalized to base currency and time period. This data is used to track cash flow dynamics during the account lifetime.
+
+Method	| Path	| Description	| User authenticated	| Available from UI
+------------- | ------------------------- | ------------- |:-------------:|:----------------:|
+GET	| /statistics/{account}	| Get specified account statistics	          |  | 	
+GET	| /statistics/current	| Get current account statistics	| × | × 
+GET	| /statistics/demo	| Get demo account statistics	|   | × 
+PUT	| /statistics/{account}	| Create or update time series datapoint for specified account	|   | 
+
+
+#### Notification service
+Stores user contact information and notification settings (reminders, backup frequency etc). Scheduled worker collects required information from other services and sends e-mail messages to subscribed customers.
+
+Method	| Path	| Description	| User authenticated	| Available from UI
+------------- | ------------------------- | ------------- |:-------------:|:----------------:|
+GET	| /notifications/settings/current	| Get current account notification settings	| × | ×	
+PUT	| /notifications/settings/current	| Save current account notification settings	| × | ×
+
+#### Notes
+- Each microservice has its own database, so there is no way to bypass API and access persistence data directly.
+- MongoDB is used as a primary database for each of the services.
+- All services are talking to each other via the Rest API
+
+## Infrastructure
+[Spring cloud](https://spring.io/projects/spring-cloud) provides powerful tools for developers to quickly implement common distributed systems patterns -
+<img width="880" alt="Infrastructure services" src="https://cloud.githubusercontent.com/assets/6069066/13906840/365c0d94-eefa-11e5-90ad-9d74804ca412.png">
+### Config service
+[Spring Cloud Config](http://cloud.spring.io/spring-cloud-config/spring-cloud-config.html) is horizontally scalable centralized configuration service for the distributed systems. It uses a pluggable repository layer that currently supports local storage, Git, and Subversion.
+
+In this project, we are going to use `native profile`, which simply loads config files from the local classpath. You can see `shared` directory in [Config service resources](https://github.com/sqshq/PiggyMetrics/tree/master/config/src/main/resources). Now, when Notification-service requests its configuration, Config service responses with `shared/notification-service.yml` and `shared/application.yml` (which is shared between all client applications).
+
+##### Client side usage
+Just build Spring Boot application with `spring-cloud-starter-config` dependency, autoconfiguration will do the rest.
+
+Now you don't need any embedded properties in your application. Just provide `bootstrap.yml` with application name and Config service url:
+```yml
+spring:
+  application:
+    name: notification-service
+  cloud:
+    config:
+      uri: http://config:8888
+      fail-fast: true
 ```
-$ docker-compose up --build
-```
 
-## Test the Application Locally
+##### With Spring Cloud Config, you can change application config dynamically. 
+For example, [EmailService bean](https://github.com/sqshq/PiggyMetrics/blob/master/notification-service/src/main/java/com/piggymetrics/notification/service/EmailServiceImpl.java) is annotated with `@RefreshScope`. That means you can change e-mail text and subject without rebuild and restart the Notification service.
 
-Make a request to view all cars:
+First, change required properties in Config server. Then make a refresh call to the Notification service:
+`curl -H "Authorization: Bearer #token#" -XPOST http://127.0.0.1:8000/notifications/refresh`
 
-```
-$ curl http://localhost:8080/api/cars
-[]
-```
+You could also use Repository [webhooks to automate this process](http://cloud.spring.io/spring-cloud-config/spring-cloud-config.html#_push_notifications_and_spring_cloud_bus)
 
-Create one car:
+##### Notes
+- `@RefreshScope` doesn't work with `@Configuration` classes and doesn't ignores `@Scheduled` methods
+- `fail-fast` property means that Spring Boot application will fail startup immediately, if it cannot connect to the Config Service.
 
-```
-$ curl -H "Content-Type: application/json" http://localhost:8080/api/cars -d '{"make":"bmw", "model": "m3"}'
-{"id":3,"make":"bmw","model":"m3","createdAt":"2021-03-01T14:12:07.624+00:00","updatedAt":"2021-03-01T14:12:07.624+00:00"}
-```
+### Auth service
+Authorization responsibilities are extracted to a separate server, which grants [OAuth2 tokens](https://tools.ietf.org/html/rfc6749) for the backend resource services. Auth Server is used for user authorization as well as for secure machine-to-machine communication inside the perimeter.
 
-View all cars again:
+In this project, I use [`Password credentials`](https://tools.ietf.org/html/rfc6749#section-4.3) grant type for users authorization (since it's used only by the UI) and [`Client Credentials`](https://tools.ietf.org/html/rfc6749#section-4.4) grant for service-to-service communciation.
 
-```
-$ curl http://localhost:8080/api/cars
-[{"id":3,"make":"bmw","model":"m3","createdAt":"2021-03-01T14:12:08.000+00:00","updatedAt":"2021-03-01T14:12:08.000+00:00"}]
-```
+Spring Cloud Security provides convenient annotations and autoconfiguration to make this really easy to implement on both server and client side. You can learn more about that in [documentation](http://cloud.spring.io/spring-cloud-security/spring-cloud-security.html).
 
-View a specific car:
+On the client side, everything works exactly the same as with traditional session-based authorization. You can retrieve `Principal` object from the request, check user roles using the expression-based access control and `@PreAuthorize` annotation.
 
-```
-$ curl http://localhost:8080/api/cars/3
-{"id":3,"make":"bmw","model":"m3","createdAt":"2021-03-01T14:12:08.000+00:00","updatedAt":"2021-03-01T14:12:08.000+00:00"}
-```
+Each PiggyMetrics client has a scope: `server` for backend services and `ui` - for the browser. We can use `@PreAuthorize` annotation to protect controllers from  an external access:
 
-Delete a car:
-
-```
-$ curl -XDELETE http://localhost:8080/api/cars/3
-```
-
-View application status:
-
-```
-$ curl -s http://localhost:8080/status | jq .
-{
-  "status": "UP",
-  "components": {
-    "db": {
-      "status": "UP",
-      "details": {
-        "database": "MySQL",
-        "validationQuery": "isValid()"
-      }
-    },
-    "diskSpace": {
-      "status": "UP",
-      "details": {
-        "total": 62725623808,
-        "free": 2183278592,
-        "threshold": 10485760,
-        "exists": true
-      }
-    },
-    "ping": {
-      "status": "UP"
-    }
-  }
+``` java
+@PreAuthorize("#oauth2.hasScope('server')")
+@RequestMapping(value = "accounts/{name}", method = RequestMethod.GET)
+public List<DataPoint> getStatisticsByAccountName(@PathVariable String name) {
+	return statisticsService.findByAccountName(name);
 }
 ```
 
-Or the database status individually:
+### API Gateway
+API Gateway is a single entry point into the system, used to handle requests and routing them to the appropriate backend service or by [aggregating results from a scatter-gather call](http://techblog.netflix.com/2013/01/optimizing-netflix-api.html). Also, it can be used for authentication, insights, stress and canary testing, service migration, static response handling and active traffic management.
+
+Netflix opensourced [such an edge service](http://techblog.netflix.com/2013/06/announcing-zuul-edge-service-in-cloud.html) and Spring Cloud allows to use it with a single `@EnableZuulProxy` annotation. In this project, we use Zuul to store some static content (the UI application) and to route requests to appropriate the microservices. Here's a simple prefix-based routing configuration for the Notification service:
+
+```yml
+zuul:
+  routes:
+    notification-service:
+        path: /notifications/**
+        serviceId: notification-service
+        stripPrefix: false
 
 ```
-$ curl -s http://localhost:8080/status/db
-{"status":"UP","details":{"database":"MySQL","validationQuery":"isValid()"}}
+
+That means all requests starting with `/notifications` will be routed to the Notification service. There is no hardcoded addresses, as you can see. Zuul uses [Service discovery](https://github.com/sqshq/PiggyMetrics/blob/master/README.md#service-discovery) mechanism to locate Notification service instances and also [Circuit Breaker and Load Balancer](https://github.com/sqshq/PiggyMetrics/blob/master/README.md#http-client-load-balancer-and-circuit-breaker), described below.
+
+### Service Discovery
+
+Service Discovery allows automatic detection of the network locations for all registered services. These locations might have dynamically assigned addresses due to auto-scaling, failures or upgrades.
+
+The key part of Service discovery is the Registry. In this project, we use Netflix Eureka. Eureka is a good example of the client-side discovery pattern, where client is responsible for looking up the locations of available service instances and load balancing between them.
+
+With Spring Boot, you can easily build Eureka Registry using the `spring-cloud-starter-eureka-server` dependency, `@EnableEurekaServer` annotation and simple configuration properties.
+
+Client support enabled with `@EnableDiscoveryClient` annotation a `bootstrap.yml` with application name:
+``` yml
+spring:
+  application:
+    name: notification-service
 ```
 
-## Installing Terraform
+This service will be registered with the Eureka Server and provided with metadata such as host, port, health indicator URL, home page etc. Eureka receives heartbeat messages from each instance belonging to the service. If the heartbeat fails over a configurable timetable, the instance will be removed from the registry.
 
-For Mac:
+Also, Eureka provides a simple interface where you can track running services and a number of available instances: `http://localhost:8761`
 
-```
-$ wget https://releases.hashicorp.com/terraform/0.14.7/terraform_0.14.7_darwin_amd64.zip
-$ unzip terraform_0.14.7_darwin_amd64.zip
-$ mv ./terraform /usr/local/bin/terraform
-$ rm -rf terraform_0.14.7_darwin_amd64.zip
-```
+### Load balancer, Circuit breaker and Http client
 
-View the version:
+#### Ribbon
+Ribbon is a client side load balancer which gives you a lot of control over the behaviour of HTTP and TCP clients. Compared to a traditional load balancer, there is no need in additional network hop - you can contact desired service directly.
 
-```
-$ terraform -version
-Terraform v0.14.7
-```
+Out of the box, it natively integrates with Spring Cloud and Service Discovery. [Eureka Client](https://github.com/sqshq/PiggyMetrics#service-discovery) provides a dynamic list of available servers so Ribbon could balance between them.
 
-## Assumptions for AWS
+#### Hystrix
+Hystrix is the implementation of [Circuit Breaker Pattern](http://martinfowler.com/bliki/CircuitBreaker.html), which gives us a control over latency and network failures while communicating with other services. The main idea is to stop cascading failures in the distributed environment - that helps to fail fast and recover as soon as possible - important aspects of a fault-tolerant system that can self-heal.
 
-For AWS, I have the current existing resources, which I will reference in terraform with the `data` source:
+Moreover, Hystrix generates metrics on execution outcomes and latency for each command, that we can use to [monitor system's behavior](https://github.com/sqshq/PiggyMetrics#monitor-dashboard).
 
-### vpc
-- vpc with the name "main", which is my non default-vpc
+#### Feign
+Feign is a declarative Http client which seamlessly integrates with Ribbon and Hystrix. Actually, a single `spring-cloud-starter-feign` dependency and `@EnableFeignClients` annotation gives us a full set of tools, including Load balancer, Circuit Breaker and Http client with reasonable default configuration.
 
-### subnets
-- 3 public subnets with tags Tier:public
-- 3 private subnets with tags Tier:private
+Here is an example from the Account Service:
 
-### nat gateway
-- nat gw with eip for private range and added to my private routing table 0.0.0.0/0 to natgw
+``` java
+@FeignClient(name = "statistics-service")
+public interface StatisticsServiceClient {
 
-### rds
-- subnet group with the name "private" which is linked to my private subnets
+	@RequestMapping(method = RequestMethod.PUT, value = "/statistics/{accountName}", consumes = MediaType.APPLICATION_JSON_UTF8_VALUE)
+	void updateStatistics(@PathVariable("accountName") String accountName, Account account);
 
-### route53
-- existing hosted zone
-
-### codestar connections 
-- codestar connection linked to my github account:
-- https://eu-west-1.console.aws.amazon.com/codesuite/settings/connections
-- the connection id is defined in: var.codestar_connection_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-## Required Environment Variables
-
-Github Personal Access Token:
-
-Head over to https://github.com/settings/tokens/new and create a token with the following scopes:
-- `admin:repo_hook`
-
-Set the environment variable as:
-
-```
-$ export TF_VAR_github_token=${your-github-pat}
-```
-
-which will be referenced in `infra/aws/eu-west-1/production/locals.tf`:
-
-```
-# locals.tf
-locals {
-  github_token = var.github_token
 }
 ```
 
-Other variables that needs replacement resides in `infra/aws/eu-west-1/production/variables.tf`:
+- Everything you need is just an interface
+- You can share `@RequestMapping` part between Spring MVC controller and Feign methods
+- Above example specifies just a desired service id - `statistics-service`, thanks to auto-discovery through Eureka
 
-```
-variable "aws_region" {}
-variable "codebuild_docker_image" {}
-variable "codebuild_security_group_name" {}
-variable "codepipeline_build_stage_name" {}
-variable "codepipeline_deploy_stage_name" {}
-variable "codepipeline_source_stage_name" {}
-variable "codestar_connection_id" {}
-variable "container_desired_count" {}
-variable "container_port" {}
-variable "container_reserved_task_memory" {}
-variable "ecs_cluster_name" {}
-variable "ecs_container_instance_type" {}
-variable "ecs_tg_healthcheck_endpoint" {}
-variable "environment_name" {}
-variable "github_branch" {}
-variable "github_repo_name" {}
-variable "github_token" {}
-variable "github_username" {}
-variable "host_port" {}
-variable "platform_type" {}
-variable "rds_admin_username" {}
-variable "rds_instance_type" {}
-variable "rds_subnet_group_name" {}
-variable "route53_hosted_zone" {}
-variable "route53_record_set" {}
-variable "service_hostname" {}
-variable "service_name" {}
-variable "service_name_short" {}
-variable "ssh_keypair_name" {}
-variable "vpc_name" {}
-```
+### Monitor dashboard
 
-Also ensure your configuration matches your setup in:
-- `infra/aws/eu-west-1/production/providers.tf`
-- `infra/aws/eu-west-1/production/terraform-state.tf`
+In this project configuration, each microservice with Hystrix on board pushes metrics to Turbine via Spring Cloud Bus (with AMQP broker). The Monitoring project is just a small Spring boot application with the [Turbine](https://github.com/Netflix/Turbine) and [Hystrix Dashboard](https://github.com/Netflix-Skunkworks/hystrix-dashboard).
 
-## Notes
+Let's see observe the behavior of our system under load: Statistics Service imitates a delay during the request processing. The response timeout is set to 1 second:
 
-I am using the admin credentials for the application to use to authenticate against rds (for this demo), but you can use something like ansible and the local-exec provisioner to provision a rds username and password like [here](https://github.com/ruanbekker/terraformfiles/blob/master/aws-cicd-ecs-codepipeline/existing-vpc-ecs-rds-new-dbuser-ansible-ssm/infra/rds.tf#L11-L40).
+<img width="880" src="https://cloud.githubusercontent.com/assets/6069066/14194375/d9a2dd80-f7be-11e5-8bcc-9a2fce753cfe.png">
 
-I am also using `String` as the type for SSM, if you save secret information, you should be using `SecureString` and encrypt it with KMS, but for the demo I won't be doing that.
+<img width="212" src="https://cloud.githubusercontent.com/assets/6069066/14127349/21e90026-f628-11e5-83f1-60108cb33490.gif">	| <img width="212" src="https://cloud.githubusercontent.com/assets/6069066/14127348/21e6ed40-f628-11e5-9fa4-ed527bf35129.gif"> | <img width="212" src="https://cloud.githubusercontent.com/assets/6069066/14127346/21b9aaa6-f628-11e5-9bba-aaccab60fd69.gif"> | <img width="212" src="https://cloud.githubusercontent.com/assets/6069066/14127350/21eafe1c-f628-11e5-8ccd-a6b6873c046a.gif">
+--- |--- |--- |--- |
+| `0 ms delay` | `500 ms delay` | `800 ms delay` | `1100 ms delay`
+| Well behaving system. Throughput is about 22 rps. Small number of active threads in the Statistics service. Median service time is about 50 ms. | The number of active threads is growing. We can see purple number of thread-pool rejections and therefore about 40% of errors, but the circuit is still closed. | Half-open state: the ratio of failed commands is higher than 50%, so the circuit breaker kicks in. After sleep window amount of time, the next request goes through. | 100 percent of the requests fail. The circuit is now permanently open. Retry after sleep time won't close the circuit again because a single request is too slow.
 
+### Log analysis
 
-## Deploy Infrastructure to AWS
+Centralized logging can be very useful while attempting to identify problems in a distributed environment. Elasticsearch, Logstash and Kibana stack lets you search and analyze your logs, utilization and network activity data with ease.
 
-Validate:
+### Distributed tracing
 
-```
-$ terraform validate
-Success! The configuration is valid.
+Analyzing problems in distributed systems can be difficult, especially trying to trace requests that propagate from one microservice to another.
+
+[Spring Cloud Sleuth](https://cloud.spring.io/spring-cloud-sleuth/) solves this problem by providing support for the distributed tracing. It adds two types of IDs to the logging: `traceId` and `spanId`. `spanId` represents a basic unit of work, for example sending an HTTP request. The traceId contains a set of spans forming a tree-like structure. For example, with a distributed big-data store, a trace might be formed by a PUT request. Using `traceId` and `spanId` for each operation we know when and where our application is as it processes a request, making reading logs much easier. 
+
+The logs are as follows, notice the `[appname,traceId,spanId,exportable]` entries from the Slf4J MDC:
+
+```text
+2018-07-26 23:13:49.381  WARN [gateway,3216d0de1384bb4f,3216d0de1384bb4f,false] 2999 --- [nio-4000-exec-1] o.s.c.n.z.f.r.s.AbstractRibbonCommand    : The Hystrix timeout of 20000ms for the command account-service is set lower than the combination of the Ribbon read and connect timeout, 80000ms.
+2018-07-26 23:13:49.562  INFO [account-service,3216d0de1384bb4f,404ff09c5cf91d2e,false] 3079 --- [nio-6000-exec-1] c.p.account.service.AccountServiceImpl   : new account has been created: test
 ```
 
-Variables isn't supported for backend, see [this issue](https://github.com/hashicorp/terraform/issues/13022#issuecomment-294262392), to use variables, you can [look at this example](https://github.com/ruanbekker/terraformfiles/tree/master/s3-backend-with-variables):
+- *`appname`*: The name of the application that logged the span from the property `spring.application.name`
+- *`traceId`*: This is an ID that is assigned to a single request, job, or action
+- *`spanId`*: The ID of a specific operation that took place
+- *`exportable`*: Whether the log should be exported to [Zipkin](https://zipkin.io/)
 
-Initialize:
+## Infrastructure automation
 
-```
-$ terraform init -input=false
-```
+Deploying microservices, with their interdependence, is much more complex process than deploying a monolithic application. It is really important to have a fully automated infrastructure. We can achieve following benefits with Continuous Delivery approach:
 
-Plan:
+- The ability to release software anytime
+- Any build could end up being a release
+- Build artifacts once - deploy as needed
 
-```
-$ terraform plan
-...
-  # aws_acm_certificate.cert will be created
-  # aws_acm_certificate_validation.validate will be created
-  # aws_alb.ecs will be created
-  # aws_alb_listener.http will be created
-  # aws_alb_listener.https will be created
-  # aws_alb_target_group.service_tg will be created
-  # aws_cloudwatch_log_group.ecs will be created
-  # aws_codebuild_project.build will be created
-  # aws_codepipeline.pipeline will be created
-  # aws_codepipeline_webhook.webhook will be created
-  # aws_codestarconnections_connection.github will be created
-  # aws_db_instance.prod will be created
-  # aws_ecr_repository.repo will be created
-  # aws_ecs_cluster.prod will be created
-  # aws_ecs_service.service will be created
-  # aws_ecs_task_definition.service will be created
-  # aws_iam_instance_profile.ecs_instance will be created
-  # aws_iam_role.codebuild_role will be created
-  # aws_iam_role.codepipeline_role will be created
-  # aws_iam_role.ecs_instance_role will be created
-  # aws_iam_role.ecs_task_role will be created
-  # aws_iam_role_policy.codebuild_policy will be created
-  # aws_iam_role_policy.codepipeline_policy will be created
-  # aws_iam_role_policy.ecs_instance_policy will be created
-  # aws_iam_role_policy.ecs_task_policy will be created
-  # aws_instance.ec2 will be created
-  # aws_lb_listener_rule.forward_to_tg will be created
-  # aws_route53_record.record["rbkr.xyz"] will be created
-  # aws_route53_record.www will be created
-  # aws_s3_bucket.codepipeline_artifact_store will be created
-  # aws_security_group.alb will be created
-  # aws_security_group.codebuild will be created
-  # aws_security_group.ecs_instance will be created
-  # aws_security_group.rds_instance will be created
-  # aws_security_group_rule.alb_egress will be created
-  # aws_security_group_rule.container_port will be created
-  # aws_security_group_rule.ec2_egress will be created
-  # aws_security_group_rule.http will be created
-  # aws_security_group_rule.https will be created
-  # aws_security_group_rule.mysql will be created
-  # aws_security_group_rule.ssh will be created
-  # aws_ssm_parameter.database_host will be created
-  # aws_ssm_parameter.database_name will be created
-  # aws_ssm_parameter.database_password will be created
-  # aws_ssm_parameter.database_port will be created
-  # aws_ssm_parameter.database_user will be created
-  # github_repository_webhook.webhook will be created
-  # random_password.db_admin_password will be created
-  # random_shuffle.subnets will be created
-  # random_string.secret will be created
-Plan: 50 to add, 0 to change, 0 to destroy.
-```
+Here is a simple Continuous Delivery workflow, implemented in this project:
 
-Apply:
+<img width="880" src="https://cloud.githubusercontent.com/assets/6069066/14159789/0dd7a7ce-f6e9-11e5-9fbb-a7fe0f4431e3.png">
 
-```
-$ terraform apply -input=false -auto-approve
-Apply complete! Resources: 55 added, 0 changed, 0 destroyed.
-Releasing state lock. This may take a few moments...
+In this [configuration](https://github.com/sqshq/PiggyMetrics/blob/master/.travis.yml), Travis CI builds tagged images for each successful git push. So, there are always the `latest` images for each microservice on [Docker Hub](https://hub.docker.com/r/sqshq/) and older images, tagged with git commit hash. It's easy to deploy any of them and quickly rollback, if needed.
 
-Outputs:
+## Let's try it out
 
-account_id = "xxxxxxxxxxxx"
-alb_dns = "ecs-prod-alb-xxxxxxxxxx.eu-west-1.elb.amazonaws.com"
-caller_arn = "arn:aws:iam::xxxxxxxxxxxx:user/x"
-caller_user = "AXXXXXXXXXXXXXXXXXXXXXX"
-db_address = "ecs-prod-rds-instance.xxxxxxxxxxxx.eu-west-1.rds.amazonaws.com"
-environment_name = "prod"
-service_hostname = "www.rbkr.xyz"
+Note that starting 8 Spring Boot applications, 4 MongoDB instances and a RabbitMq requires at least 4Gb of RAM.
 
-~/aws-terraform-cicd-java-springboot/infra/aws/eu-west-1/production main* 4m 24s
-```
+#### Before you start
+- Install Docker and Docker Compose.
+- Change environment variable values in `.env` file for more security or leave it as it is.
+- Build the project: `mvn package [-DskipTests]`
 
-Now that your infrastructure is built, we can trigger our repo to start the pipeline:
+#### Production mode
+In this mode, all latest images will be pulled from Docker Hub.
+Just copy `docker-compose.yml` and hit `docker-compose up`
 
-```
-$ git commit --allow-empty --message "trigger pipeline"
-$ git push origin main
-```
+#### Development mode
+If you'd like to build images yourself, you have to clone the repository and build artifacts using maven. After that, run `docker-compose -f docker-compose.yml -f docker-compose.dev.yml up`
 
-## A Tour through our Infra
+`docker-compose.dev.yml` inherits `docker-compose.yml` with additional possibility to build images locally and expose all containers ports for convenient development.
 
-We can see our Pipeline when you navigate to CodePipeline:
+If you'd like to start applications in Intellij Idea you need to either use [EnvFile plugin](https://plugins.jetbrains.com/plugin/7861-envfile) or manually export environment variables listed in `.env` file (make sure they were exported: `printenv`)
 
-![](docs/screenshots/codepipeline-overview.png)
+#### Important endpoints
+- http://localhost:80 - Gateway
+- http://localhost:8761 - Eureka Dashboard
+- http://localhost:9000/hystrix - Hystrix Dashboard (Turbine stream link: `http://turbine-stream-service:8080/turbine/turbine.stream`)
+- http://localhost:15672 - RabbitMq management (default login/password: guest/guest)
 
-When you select the pipeline to see our stages:
+## Contributions are welcome!
 
-![](docs/screenshots/codepipeline-detail-view.png)
-
-We can view our ECS Cluster:
-
-![](docs/screenshots/ecs-cluster-view.png)
-
-Our task:
-
-![](docs/screenshots/ecs-task-view.png)
-
-And also check that our ACM Certificates was validated (but terraform did that already):
-
-![](docs/screenshots/acm-certificates.png)
-
-## Test the Application on AWS
-
-Make a request to view all the cars:
-
-```
-❯ curl -i https://www.rbkr.xyz/api/cars                                                                        
-HTTP/2 200 
-date: Wed, 03 Mar 2021 15:29:41 GMT
-content-type: application/json
-
-[]
-```
-
-Create a car:
-
-```
-❯ curl -i -H "Content-Type: application/json" -XPOST https://www.rbkr.xyz/api/cars -d '{"make": "bmw", "model": "m3"}'
-HTTP/2 200 
-date: Wed, 03 Mar 2021 15:29:33 GMT
-content-type: application/json
-
-{"id":1,"make":"bmw","model":"m3","createdAt":"2021-03-03T15:29:33.707+00:00","updatedAt":"2021-03-03T15:29:33.707+00:00"}
-```
-
-View all the cars:
-
-```
-❯ curl -i https://www.rbkr.xyz/api/cars                                                                        
-HTTP/2 200 
-date: Wed, 03 Mar 2021 15:29:41 GMT
-content-type: application/json
-
-[{"id":1,"make":"bmw","model":"m3","createdAt":"2021-03-03T15:29:34.000+00:00","updatedAt":"2021-03-03T15:29:34.000+00:00"}]
-```
-
-View the application status:
-
-```
-❯ curl -s https://www.rbkr.xyz/status | jq .
-{
-  "status": "UP",
-  "components": {
-    "db": {
-      "status": "UP",
-      "details": {
-        "database": "MySQL",
-        "validationQuery": "isValid()"
-      }
-    },
-    "diskSpace": {
-      "status": "UP",
-      "details": {
-        "total": 10501771264,
-        "free": 9604685824,
-        "threshold": 10485760,
-        "exists": true
-      }
-    },
-    "ping": {
-      "status": "UP"
-    }
-  }
-}
-```
-
-## Destroy Infrastructure on AWS:
-
-Destroy:
-
-```
-$ terraform destroy -auto-approve
-Destroy complete! Resources: 55 destroyed.
-Releasing state lock. This may take a few moments...
-```
-
-## Destroy Application running Locally:
-
-```
-$ docker-compose down
-```
-
-## Resources 
-
-### AWS Resources
-
-- [Difference between Task Role and Execution Role](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_TaskDefinition.html)
-
-### Terraform Resources
-
-- [Shunit Tests for User Data](https://alexharv074.github.io/2020/01/31/unit-testing-a-terraform-user_data-script-with-shunit2.html)
-
-### Java Resources
-- [spring-testing-separate-data-source](https://www.baeldung.com/spring-testing-separate-data-source) and [github](https://github.com/eugenp/tutorials/tree/master/persistence-modules/spring-boot-persistence)
-- [testing-with-configuration-classes-and-profiles](https://spring.io/blog/2011/06/21/spring-3-1-m2-testing-with-configuration-classes-and-profiles)
-- [hibernate-ddl-auto-example](https://www.onlinetutorialspoint.com/hibernate/hbm2ddl-auto-example-hibernate-xml-config.html)
-- [cleaning-up-spring-boot-integration-tests-logs](https://ricardolsmendes.medium.com/cleaning-up-spring-boot-integration-tests-logs-5b2d0a5f29bc)
-- [docker-caching-strategies](https://testdriven.io/blog/faster-ci-builds-with-docker-cache/)
-
-## Credit
-
-Huge thanks to [Cobus Bernard](https://github.com/cobusbernard/aws-containers-for-beginners) for his webinar back in 2019, and for sharing his terraform source code, as I learned a LOT from him, and this example is based off his terraform structure.
-
-Also great thanks to [callicoder](https://www.callicoder.com/spring-boot-rest-api-tutorial-with-mysql-jpa-hibernate/) for the rest api example which this example is based off.
+PiggyMetrics is open source, and would greatly appreciate your help. Feel free to suggest and implement any improvements.

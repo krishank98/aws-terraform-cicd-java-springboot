@@ -1,6 +1,0 @@
-/workspaces/aws-terraform-cicd-java-springboot-working/REDO/src/main/java/com/ruanbekker/cargarage/controller/IndexController.java
-/workspaces/aws-terraform-cicd-java-springboot-working/REDO/src/main/java/com/ruanbekker/cargarage/model/Car.java
-/workspaces/aws-terraform-cicd-java-springboot-working/REDO/src/main/java/com/ruanbekker/cargarage/repository/CarRepository.java
-/workspaces/aws-terraform-cicd-java-springboot-working/REDO/src/main/java/com/ruanbekker/cargarage/CarGarageApplication.java
-/workspaces/aws-terraform-cicd-java-springboot-working/REDO/src/main/java/com/ruanbekker/cargarage/controller/CarController.java
-/workspaces/aws-terraform-cicd-java-springboot-working/REDO/src/main/java/com/ruanbekker/cargarage/exception/ResourceNotFoundException.java
