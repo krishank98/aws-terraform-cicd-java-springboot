@@ -1,0 +1,5 @@
+/workspaces/aws-terraform-cicd-java-springboot-working/account-service/src/test/java/com/piggymetrics/account/AccountServiceApplicationTests.java
+/workspaces/aws-terraform-cicd-java-springboot-working/account-service/src/test/java/com/piggymetrics/account/controller/AccountControllerTest.java
+/workspaces/aws-terraform-cicd-java-springboot-working/account-service/src/test/java/com/piggymetrics/account/client/StatisticsServiceClientFallbackTest.java
+/workspaces/aws-terraform-cicd-java-springboot-working/account-service/src/test/java/com/piggymetrics/account/repository/AccountRepositoryTest.java
+/workspaces/aws-terraform-cicd-java-springboot-working/account-service/src/test/java/com/piggymetrics/account/service/AccountServiceTest.java
