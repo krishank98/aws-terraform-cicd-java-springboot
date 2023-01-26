@@ -1,5 +1,0 @@
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/test/java/com/piggymetrics/auth/service/security/MongoUserDetailsServiceTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/test/java/com/piggymetrics/auth/controller/UserControllerTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/test/java/com/piggymetrics/auth/repository/UserRepositoryTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/test/java/com/piggymetrics/auth/service/UserServiceTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/test/java/com/piggymetrics/auth/AuthServiceApplicationTests.java

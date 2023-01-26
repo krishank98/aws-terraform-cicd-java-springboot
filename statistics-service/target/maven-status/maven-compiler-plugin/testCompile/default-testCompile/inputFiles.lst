@@ -1,6 +1,0 @@
-/workspaces/aws-terraform-cicd-java-springboot-working/statistics-service/src/test/java/com/piggymetrics/statistics/service/ExchangeRatesServiceImplTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/statistics-service/src/test/java/com/piggymetrics/statistics/client/ExchangeRatesClientTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/statistics-service/src/test/java/com/piggymetrics/statistics/StatisticsServiceApplicationTests.java
-/workspaces/aws-terraform-cicd-java-springboot-working/statistics-service/src/test/java/com/piggymetrics/statistics/service/StatisticsServiceImplTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/statistics-service/src/test/java/com/piggymetrics/statistics/controller/StatisticsControllerTest.java
-/workspaces/aws-terraform-cicd-java-springboot-working/statistics-service/src/test/java/com/piggymetrics/statistics/repository/DataPointRepositoryTest.java

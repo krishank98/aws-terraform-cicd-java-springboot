@@ -1,9 +1,0 @@
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/domain/User.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/service/UserServiceImpl.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/service/security/MongoUserDetailsService.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/config/OAuth2AuthorizationConfig.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/repository/UserRepository.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/service/UserService.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/controller/UserController.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/config/WebSecurityConfig.java
-/workspaces/aws-terraform-cicd-java-springboot-working/auth-service/src/main/java/com/piggymetrics/auth/AuthApplication.java
