@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    parameters {
+        booleanParam(name: 'Run', defaultValue: false, description: 'True to run build')
+    }
     stages {
         stage('git'){
             steps{
@@ -7,10 +10,15 @@ pipeline {
             }
         }
         stage('build') {
+                      when {
+                   expression { return params.Run }
+               }
             steps {
-                sh '/usr/local/sdkman/candidates/maven/current/bin/mvn install -DskipTests'
+                  sh '/usr/local/sdkman/candidates/maven/current/bin/mvn install -DskipTests'
             }
-        }
+            
+            }
+        
         stage('compose'){
             steps{
                 sh 'ls'
