@@ -13,8 +13,15 @@ pipeline {
         }
         stage('compose'){
             steps{
-                sh 'cd docker/compose/ && /workspaces/aws-terraform-cicd-java-springboot-working/docker-compose up'
+                sh 'ls'
+                 sh '/usr/local/bin/docker-compose up'
             }
         }
+       stage('compose down'){
+           steps{
+               sh 'ls'
+               sh '/usr/local/bin/docker-compose down'
+           }
+       }
     }
 }
