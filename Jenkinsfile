@@ -14,7 +14,7 @@ pipeline {
         stage('compose'){
             steps{
                 sh 'ls'
-                 sh '/usr/local/bin/docker-compose up'
+                 sh '/usr/local/bin/docker-compose up -d'
             }
         }
        stage('compose down'){
