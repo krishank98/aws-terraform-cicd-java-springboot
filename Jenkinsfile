@@ -1,7 +1,6 @@
 pipeline {
     agent any
     parameters {
-        booleanParam(name: 'Run', defaultValue: false, description: 'True to run build')
         booleanParam(name: 'Push', defaultValue: false, description: 'True to push to dockerhub')
     } 
     environment {
@@ -10,13 +9,11 @@ pipeline {
     stages {
         stage('git'){
             steps{
-                git branch: 'frontend-gatway', url: 'https://github.com/krishank98/aws-terraform-cicd-java-springboot-working'
+                git branch: 'frontend-gateway', url: 'https://github.com/krishank98/aws-terraform-cicd-java-springboot-working'
             }
         }
         stage('build') {
-                      when {
-                   expression { return params.Run }
-               }
+                 
             steps {
                   sh '/usr/local/sdkman/candidates/maven/current/bin/mvn install -DskipTests'
             }
@@ -26,7 +23,7 @@ pipeline {
         stage('docker-build'){
             steps{
                 sh 'ls'
-                 sh 'docker build . -t krish2356/gatway:${DOCKER_TAG}'
+                 sh 'docker build . -t krish2356/gateway:${DOCKER_TAG}'
             }
         }
        stage('dockerhub push'){
