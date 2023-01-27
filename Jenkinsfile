@@ -23,7 +23,8 @@ pipeline {
         stage('docker-build'){
             steps{
                 sh 'ls'
-                 sh 'docker build . -t krish2356/gateway:${DOCKER_TAG}'
+                // sh 'docker build . -t krish2356/piggymetrics-gateway:${DOCKER_TAG}'
+                sh 'docker build . -t krish2356/piggymetrics-gateway'
             }
         }
        stage('dockerhub push'){
@@ -36,10 +37,16 @@ pipeline {
                      sh "docker login -u krish2356 -p ${password}"
                  }
                  
-                sh "docker push krish2356/gateway:${DOCKER_TAG} "
+                // sh "docker push krish2356/piggymetrics-gateway:${DOCKER_TAG}"
+                sh "docker push krish2356/piggymetrics-gateway"
             }
            
        }
+       stage ('Trigger-Piggymetices-Dev') {
+            steps {
+                build job: 'piggymetrics'
+            }
+        }
     }
 }
 def getVersion(){
