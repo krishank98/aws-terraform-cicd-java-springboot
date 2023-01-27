@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('git'){
             steps{
-                git branch: 'frontend-gateway', url: 'https://github.com/krishank98/aws-terraform-cicd-java-springboot-working'
+                git branch: 'frontend-gatway', url: 'https://github.com/krishank98/aws-terraform-cicd-java-springboot-working'
             }
         }
         stage('build') {
