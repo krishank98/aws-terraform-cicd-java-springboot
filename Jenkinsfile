@@ -3,7 +3,10 @@ pipeline {
     parameters {
         booleanParam(name: 'Create', defaultValue: false, description: 'Create infra')
     } 
-   
+    environment {
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+    }
     stages {
         stage('git'){
             steps{
@@ -12,7 +15,7 @@ pipeline {
         }
         stage('terraform init'){
             steps{
-                sh 'terraform apply --auto-approve'
+                sh 'terraform init'
             }
         }
         stage('terraform plan'){
@@ -23,6 +26,11 @@ pipeline {
         stage('terraform apply'){
             steps{
                 sh 'terraform apply --auto-approve'
+            }
+        }
+        stage('terraform destroy'){
+            steps{
+                sh 'terraform destroy --auto-approve'
             }
         }
 }

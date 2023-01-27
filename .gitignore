@@ -15,3 +15,5 @@ config-map-aws-auth.yaml
 
 node_modules/*
 target/*
+
+.aws/
