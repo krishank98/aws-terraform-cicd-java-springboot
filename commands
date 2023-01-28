@@ -1,0 +1,5 @@
+https://www.fosstechnix.com/how-to-install-sonarqube-on-ubuntu-22-04-lts/
+
+ sudo su sonar
+ cd /opt/sonarqube/bin/linux-x86-64/
+ ./sonar.sh start
