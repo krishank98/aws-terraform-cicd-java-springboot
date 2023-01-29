@@ -17,4 +17,4 @@ node_modules/*
 target/*
 
 .aws/
-jenkins_backups/
+jenkins_backups/*
