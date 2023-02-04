@@ -1,4 +1,0 @@
-- job_name: ‘jenkins’
-  metrics_path: /prometheus
-  static_configs:
-    - targets: [‘https://krishank98-bookish-yodel-*-8080.preview.app.github.dev/’]
