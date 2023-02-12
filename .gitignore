@@ -15,6 +15,6 @@ config-map-aws-auth.yaml
 
 node_modules/*
 target/*
-
+.node_modules
 .aws/
 jenkins_backups/*
