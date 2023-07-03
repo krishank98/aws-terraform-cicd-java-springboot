@@ -1,7 +1,7 @@
 export COMPOSE_DOCKER_CLI_BUILD=1 
 export DOCKER_BUILDKIT=1
 
-# aws-terraform-cicd-java-springboot....
+# aws-terraform-cicd-java-springboot.....
 Terraform: AWS CICD with CodePipeline, CodeBuild, ECS and a Springboot App.
 
 The [all-in-one](https://github.com/ruanbekker/aws-terraform-cicd-java-springboot/tree/all-in-one) branch has the application code, application infrastructure and pipeline infrastructure in one repository.
